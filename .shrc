@@ -1,0 +1,138 @@
+#!/bin/sh
+
+# Shell settings to be shared across any shell. This file should be sourced
+# at the very top of another shell's rc file.
+
+# {{{ Functions
+
+PrefixPATH()
+{
+    # first check if the location exists
+    [ ! -d "$1" ] && return 1
+
+    # only add it to PATH if it's not already there
+    if [ -z "$(echo "${PATH}" | sed -e 's/:/\n/g' | grep "^${1}$")" ]; then
+        export PATH="${1}:${PATH}"
+    fi
+}
+
+CommandAvailable()
+{
+    [ -n "$1" ] && command -v "$1" 2>&1 > /dev/null
+}
+
+# }}}
+# {{{ PATH Manipulation
+
+if [ -n "$BBENV" ]; then
+    PrefixPATH "/opt/bb/bin"
+    PrefixPATH "/opt/node/bin"
+    PrefixPATH "/opt/administration/scripts-general"
+    PrefixPATH "${HOME}/.cabal/bin"
+    PrefixPATH "${HOME}/bin"
+    PrefixPATH "${HOME}/arch/`uname -s`/bin"
+fi
+
+# }}}
+# {{{ Aliases
+
+# standard shell aliases
+alias l='ls --color=auto'
+alias ltr='ls --color=auto -ltr'
+alias ll='ls -lh --color=auto'
+alias lll='ls -lah --color=auto'
+alias cd..='cd ..'
+alias nano='vim'
+alias vi='vim'
+alias cl='clear'
+
+if CommandAvailable tmux; then
+    alias tmux='tmux -2'
+fi
+
+# git aliases
+if CommandAvailable git; then
+    alias ga='git add'
+    alias gb='git branch'
+    alias gc='git commit'
+    alias gco='git checkout'
+    alias gcb='git checkout -b'
+    alias gd='git diff'
+    alias gl='git log --graph --decorate --all --pretty="%C(auto)%h%d %s (%C(blue)%an%Creset, %C(cyan)%cr%Creset)"'
+    alias gp='git push'
+    alias gs='git status'
+    alias gsq='git commit --amend --no-edit'
+    alias gpum='git pull upstream master'
+    # alias gpf='git push --force'
+
+    alias git-this-origin='git remote -v | grep origin | head -1 | cut -d: -f2 | cut -d" " -f1'
+    alias git-this-branch='git symbolic-ref --short HEAD'
+    alias git-last-message='git log --pretty=%B -1'
+    alias git-last-subject='git log --pretty=%s -1'
+    alias git-last-body='git log --pretty=%b -1'
+fi
+
+if [ -n "$BBENV" ]; then
+    # Bloomberg aliases
+    [ ! `CommandAvailable chimera` ] && alias chimera="/etc/bb/chimera/chimera-tool"
+    [ ! `CommandAvailable getLevel` ] && alias getLevel='/bbsrc/bin/prod/bin/aotools/getLevel'
+
+    # for silencing emacs 24.4 dbus warning message
+    export NO_AT_BRIDGE=1
+
+    alias ddd="dpkg-distro-dev"
+    alias sd48="ssh sd48"
+    alias sd39="ssh sd39"
+    [ -f ~/.bbalias ] && . ~/.bbalias
+
+    autopr()
+    {
+        bbgh create-pr --title "$(git-last-subject)" \
+                       --body "$(git-last-body)" \
+                       $(git-this-origin):$(git-this-branch) \
+                       $(fxhub get-upstream | sed -e "s/.*://"):master
+    }
+fi
+
+# }}}
+# {{{ Global Variables
+
+[ -n "$HOSTNAME" ] || export HOSTNAME="`hostname`"
+[ -n "$EDITOR" ] || export EDITOR="vim"
+[ -n "$PAGER" ] || export PAGER="less"
+
+
+if [ -n "$BBENV" ]; then
+    MBIG="/home/rbogdan3/mbig"
+fi
+
+# }}}
+# {{{ Terminfo magic
+
+if [ -n "$BBENV" ]; then
+
+    export TERMINFO="${HOME}/.terminfo/`uname -s`"
+
+    #if [ $TERM = "rxvt" ]; then
+    #    TERM=rxvt-unicode-256color
+    #fi
+
+    if [ ! "$TERM" = "screen-256color" ]; then
+        export TERM=xterm-256color
+    fi
+
+    export TERM
+fi
+
+# }}}
+# {{{ Miscellaneous
+
+if [ -n "$BBENV" ] && CommandAvailable hijackEOD.sh; then
+    . `which hijackEOD.sh`
+fi
+
+# . ${HOME}/z/z.sh
+
+# }}}
+
+# vim: set foldmethod=marker:
